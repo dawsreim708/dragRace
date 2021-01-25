@@ -1,4 +1,8 @@
-﻿using System;
+﻿/*Dawson Reimer
+ * Final game project
+ * Drag Race
+*/
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -7,11 +11,13 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Diagnostics;
 
 namespace dragRace
 {
     public partial class Form1 : Form
     {
+        //Setup of global variables and brushes
         string gameState = "start";
         Random random = new Random();
 
@@ -25,7 +31,7 @@ namespace dragRace
         bool clutchUsed;
         bool breakIn;
         bool throttleIn;
-        bool shiftUp = false;
+        bool shiftUp;
         bool shiftDown;
         
         bool gameStart = true;
@@ -39,6 +45,7 @@ namespace dragRace
         int distance = 400;
         double position;
         double distancePerFrame;
+        Stopwatch stopwatch = new Stopwatch();
 
         int roadWidth = 100;
         int roadLength = 700;
@@ -56,6 +63,7 @@ namespace dragRace
 
         public Form1()
         {
+            //set gear ratio array and find random time for lights to start going
             InitializeComponent();
             gearRatio[1] = 120;
             gearRatio[2] = 80;
@@ -67,6 +75,7 @@ namespace dragRace
 
         private void Form1_KeyDown(object sender, KeyEventArgs e)
         {
+            //check for key down of controls and set the control true
             switch (e.KeyCode)
             {
                 case Keys.Z:
@@ -78,6 +87,8 @@ namespace dragRace
                 case Keys.C:
                     throttleIn = true;
                     break;
+                    //this section is only for start and end screen
+
                 case Keys.Space:
                     if (gameState == "start" || gameState == "end")
                     {
@@ -91,12 +102,20 @@ namespace dragRace
                         Application.Exit();
                     }
                     break;
+
+                case Keys.K:
+                    shiftUp = true;
+                    break;
+                case Keys.M:
+                    shiftDown = true;
+                    break;
             }
                 
         }
 
         private void Form1_KeyUp(object sender, KeyEventArgs e)
         {
+            //on button release control gets set to false
             switch (e.KeyCode)
             {
                 case Keys.Z:
@@ -108,22 +127,21 @@ namespace dragRace
                 case Keys.C:
                     throttleIn = false;
                     break;
-                case Keys.K:
-                    shiftUp = true;
-                    break;
-                case Keys.M:
-                    shiftDown = true;
-                    break;
             }
         }
 
         private void timer1_Tick(object sender, EventArgs e)
         {
+            //sets speed for which rpm can increase based on gear
             acceleration = 100 / gear;
+
+            //if launched at certain rpm range acceleration gets incrased for 1st gear
             if(goodLaunch == true && gear == 1)
             {
-                acceleration += 5;
+                acceleration += 10;
             }
+
+            //if the shift button is pushed this checks to see if the clutch is in
             if (shiftUp == true && clutchIn == true && gear <= 4)
             {
                 gear++;
@@ -143,6 +161,7 @@ namespace dragRace
                 shiftDown = false;
             }
             
+            //this section allows engine to be reved without any power going to the wheels
             if (clutchIn == true && throttleIn == true && engineRPM <= 8000)
             {
                 engineRPM += 125;
@@ -154,6 +173,7 @@ namespace dragRace
                 clutchUsed = true;
             }
 
+            //changes engine rpm to what it should be for the speed, and checks if launch was good
             if (clutchUsed == true && clutchIn == false)
             {
                 if(speed == 0 && gear == 1 && engineRPM < 6000 && engineRPM > 4000)
@@ -165,10 +185,13 @@ namespace dragRace
                 clutchUsed = false;
             }
             
+            //sets speed
             if(clutchIn == false)
             {
                 speed = engineRPM / gearRatio[gear];
             }
+
+            //increases or decreases speed if throttle is in or out
             if (clutchIn == false && throttleIn == true && engineRPM <= 8000)
             {
                 engineRPM += acceleration;
@@ -178,6 +201,7 @@ namespace dragRace
                 engineRPM -= acceleration;
             }
 
+            //when break is pressed speed decreases
             if(breakIn == true)
             {
                 speed -= 2;
@@ -187,10 +211,12 @@ namespace dragRace
                 speed = 0;
             }
 
+            //waits for green light while checking for false start then starts timer
             if(gameStart == true)
             {
                 if(greenLight == true)
                 {
+                    stopwatch.Start();
                     gameStart = false;
                 }
                 else if(speed > 0)
@@ -209,12 +235,14 @@ namespace dragRace
                 }
             }
 
+            // finds distance per frame and adds it to position, when over 1/4 mile game ends
             distancePerFrame = speed / 2.77 / 50;
             position += distancePerFrame;
             if (position >= distance)
             {
                 gameState = "end";
                 timer1.Enabled = false;
+                stopwatch.Stop();
             }
      
             Refresh();
@@ -280,12 +308,17 @@ namespace dragRace
             }
             if (gameState == "end")
             {
+                e.Graphics.DrawString("Game Over", bigFont, whiteBrush, 330, 150);
                 if (falseStart == true)
                 {
                     e.Graphics.FillEllipse(redBrush, 50, 210, 30, 30);
+                    e.Graphics.DrawString("False start, press space to play again or esc to exit", smallFont, whiteBrush, 250, 200);
                 }
-                e.Graphics.DrawString("Game Over", bigFont, whiteBrush, 330, 150);
-                e.Graphics.DrawString("press space to start or esc to exit", smallFont, whiteBrush, 270, 200);
+                else
+                {
+                    e.Graphics.DrawString($"Your time is {stopwatch.Elapsed} press space to play again or esc to exit", smallFont, whiteBrush, 250, 200);
+                }
+                
             }
            
         }
@@ -296,7 +329,17 @@ namespace dragRace
         }
         public void gameInitialize()
         {
+            // start game engine and set values to 0
             timer1.Enabled = true;
+            speed = 0;
+            engineRPM = 0;
+            gear = 1;
+            position = 0;
+            gameStart = true;
+            greenLight = false;
+            falseStart = false;
+            i = 0;
+            stopwatch.Reset();
         }
     }
 }
